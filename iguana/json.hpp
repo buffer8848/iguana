@@ -46,22 +46,6 @@ namespace iguana { namespace json
 	{
 		char temp[20];
 		auto p = itoa_fwd(value, temp);
-		ss.write(temp, p-temp);
-	}
-
-	template<typename Stream>
-	void render_json_value(Stream& ss, int64_t value)
-	{
-		char temp[65];
-		auto p = xtoa(value, temp, 10, 1);
-		ss.write(temp, p - temp);
-	}
-
-	template<typename Stream>
-	void render_json_value(Stream& ss, uint64_t value)
-	{
-		char temp[65];
-		auto p = xtoa(value, temp, 10, 0);
 		ss.write(temp, p - temp);
 	}
 
@@ -257,7 +241,6 @@ namespace iguana { namespace json
 			uint64_t u64;
 			double d64;
 		} value;
-		bool neg = false;
 	};
 
 	class reader_t {
@@ -304,13 +287,10 @@ namespace iguana { namespace json
 			return cur_tok_;
 		}
 
-		void next()
-		{
+		void next() {
 			auto c = skip();
 			bool do_next = false;
-			cur_tok_.neg = false;
-			switch (c)
-			{
+			switch (c) {
 			case 0:
 				cur_tok_.type = token::t_end;
 				cur_tok_.str.str = ptr_ + cur_offset_;
@@ -321,40 +301,32 @@ namespace iguana { namespace json
 			case '[':
 			case ']':
 			case ':':
-			case ',':
-			{
+			case ',': {
 				cur_tok_.type = token::t_ctrl;
 				cur_tok_.str.str = ptr_ + cur_offset_;
 				cur_tok_.str.len = 1;
 				take();
 				break;
 			}
-			case '/':
-			{
+			case '/': {
 				take();
 				c = read();
-				if (c == '/')
-				{
+				if (c == '/') {
 					take();
 					c = read();
-					while (c != '\n' && c != 0)
-					{
+					while (c != '\n' && c != 0) {
 						take();
 						c = read();
 					}
 					do_next = true;
 					break;
 				}
-				else if (c == '*')
-				{
+				else if (c == '*') {
 					take();
 					c = read();
-					do
-					{
-						while (c != '*')
-						{
-							if (c == 0)
-							{
+					do {
+						while (c != '*') {
+							if (c == 0) {
 								return;
 							}
 							take();
@@ -362,8 +334,7 @@ namespace iguana { namespace json
 						}
 						take();
 						c = read();
-						if (c == '/')
-						{
+						if (c == '/') {
 							take();
 							do_next = true;
 							break;
@@ -373,29 +344,23 @@ namespace iguana { namespace json
 				//error parser comment
 				error("not a comment!");
 			}
-			case '"':
-			{
+			case '"': {
 				cur_tok_.type = token::t_string;
 				parser_quote_string();
 				break;
 			}
-			default:
-			{
-				if (c >= '0' && c <= '9')
-				{
+			default: {
+				if (c >= '0' && c <= '9') {
 					cur_tok_.type = token::t_uint;
 					cur_tok_.value.u64 = c - '0';
 					parser_number();
 				}
-				else if (c == '-')
-				{
+				else if (c == '-') {
 					cur_tok_.type = token::t_int;
-					cur_tok_.value.i64 = 0;
-					cur_tok_.neg = true;
+					cur_tok_.value.u64 = '0' - c;
 					parser_number();
 				}
-				else
-				{
+				else {
 					cur_tok_.type = token::t_string;
 					parser_string();
 				}
@@ -409,6 +374,10 @@ namespace iguana { namespace json
 		inline bool expect(char c) {
 			return cur_tok_.str.str[0] == c;
 		}
+
+        inline bool eof() {
+            return end_mark_;
+        }
 
 	private:
 		inline void decimal_reset() { decimal = 0.1; }
@@ -810,20 +779,13 @@ namespace iguana { namespace json
 			val = static_cast<T>(temp);
 			break;
 		}
+        case token::t_uint:
 		case token::t_int: {
 			val = static_cast<T>(tok.value.i64);
-			if (tok.neg)
-				val = -val;
-			break;
-		}
-		case token::t_uint: {
-			val = static_cast<T>(tok.value.u64);
 			break;
 		}
 		case token::t_number: {
 			val = static_cast<T>(tok.value.d64);
-			if (tok.neg)
-				val = -val;
 			break;
 		}
 		default: {
@@ -839,25 +801,25 @@ namespace iguana { namespace json
 		switch (tok.type) {
 		case token::t_string: {
 			uint64_t temp = std::strtoull(tok.str.str, nullptr, 10);
-			val = static_cast<T>(temp);
+			val = static_cast<unsigned int>(temp);
 			break;
 		}
 		case token::t_int: {
 			if (tok.value.i64 < 0) {
 				rd.error("assign a negative signed integral to unsigned integral number.");
 			}
-			val = static_cast<T>(tok.value.i64);
+			val = static_cast<unsigned int>(tok.value.i64);
 			break;
 		}
 		case token::t_uint: {
-			val = static_cast<T>(tok.value.u64);
+			val = static_cast<unsigned int>(tok.value.u64);
 			break;
 		}
 		case token::t_number: {
 			if (tok.value.d64 < 0) {
 				rd.error("assign a negative float point to unsigned integral number.");
 			}
-			val = static_cast<T>(tok.value.d64);
+			val = static_cast<unsigned int>(tok.value.d64);
 			break;
 		}
 		default: {
@@ -888,8 +850,6 @@ namespace iguana { namespace json
 		case token::t_int:
 		{
 			val = static_cast<T>(tok.value.i64);
-			if (tok.neg)
-				val = -val;
 			break;
 		}
 		case token::t_uint:
@@ -900,8 +860,6 @@ namespace iguana { namespace json
 		case token::t_number:
 		{
 			val = static_cast<T>(tok.value.d64);
-			if (tok.neg)
-				val = -val;
 			break;
 		}
 		default:
@@ -956,7 +914,7 @@ namespace iguana { namespace json
 		rd.next();
 	}
 
-	void read_json(reader_t &rd, std::string &val) {
+	inline void read_json(reader_t &rd, std::string &val) {
 		auto &tok = rd.peek();
 		if (tok.type == token::t_string) {
 			val.assign(tok.str.str, tok.str.len);
@@ -1036,7 +994,9 @@ namespace iguana { namespace json
 				break;
 			}
 			else {
-				rd.error("no valid array!");
+				//rd.error("no valid array!");
+                while (!rd.eof() && rd.peek().str.str[0] != ']')
+                    rd.next();
 			}
 		}
 		rd.next();
@@ -1075,7 +1035,9 @@ namespace iguana { namespace json
 			}
 			else
 			{
-				rd.error("no valid object!");
+				//rd.error("no valid object!");
+                while (!rd.eof() && rd.peek().str.str[0] != '}')
+                    rd.next();
 			}
 		}
 		rd.next();
@@ -1089,23 +1051,50 @@ namespace iguana { namespace json
 
 	template<typename T, typename = std::enable_if_t<is_reflection<T>::value>>
 	void do_read(reader_t &rd, T &&t) {
-		for_each(std::forward<T>(t), [&rd](auto &v, size_t I, bool is_last) {
-			rd.next();
-			if (rd.peek().str != get_name<T>(I))
-				return;
+        using M = decltype(iguana_reflect_members(std::forward<T>(t)));
+        constexpr auto Count = M::value();
+        for (size_t j = 0; j < Count;) {
+            if (rd.eof()) break;
+            rd.next();
+            auto index = iguana::get_index<T>(rd.peek().str.str, rd.peek().str.length());
+            if (index < 0 || index >= Count) {
+                rd.next();
+                rd.next();
+                if (rd.peek().str.str[0] == '[') {
+                    rd.next();
+                    while (!rd.eof() && rd.peek().str.str[0] != ']')
+                        rd.next();
+                } else if (rd.peek().str.str[0] == '{') {
+                    rd.next();
+                    while (!rd.eof() && rd.peek().str.str[0] != '}')
+                        rd.next();
+                }
+                rd.next();
+                continue;
+            }
+            ++j;
 
-			rd.next();
-			rd.next();
-			read_json(rd, v);
-		}, [&rd](auto &o, size_t I, bool is_last) {
-			rd.next();
-			rd.next();
-			rd.next();
-			do_read(rd, o);
-			rd.next();
-		});
+            for_each(std::forward<T>(t), [&rd, &t, index](auto &v, size_t I, bool is_last) {
+                if (I != index)
+                    return;
+                rd.next();
+                rd.next();
+                read_json(rd, v);
+            }, [&rd, index](auto &o, size_t I, bool is_last) {
+                if (I != index)
+                    return;
+                rd.next();
+                rd.next();
+                do_read(rd, o);
+                rd.next();
+            });
+
+            if (rd.peek().str.str[0] == ']' || rd.peek().str.str[0] == '}')
+                break;
+        }
 	}
 
+    //this interface support disorderly parse, however slower than from_json interface
 	template<typename T, typename = std::enable_if_t<is_reflection<T>::value>>
 	void from_json(T &&t, const char *buf, size_t len = -1) {
 		reader_t rd(buf, len);
