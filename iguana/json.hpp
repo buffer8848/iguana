@@ -981,7 +981,7 @@ namespace iguana { namespace json
 		}
 		rd.next();
 		auto tok = &rd.peek();
-		while (tok->str.str[0] != ']') {
+		while (!rd.eof() && tok->str.str[0] != ']') {
 			emplace_back(val);
 			read_json(rd, val.back());
 			tok = &rd.peek();
@@ -995,8 +995,10 @@ namespace iguana { namespace json
 			}
 			else {
 				//rd.error("no valid array!");
-                while (!rd.eof() && rd.peek().str.str[0] != ']')
+                while (!rd.eof() && rd.peek().str.str[0] != ']' && rd.peek().str.str[0] != '}')
                     rd.next();
+                rd.next();
+                rd.next();
 			}
 		}
 		rd.next();
@@ -1010,7 +1012,7 @@ namespace iguana { namespace json
 		}
 		rd.next();
 		auto tok = &rd.peek();
-		while (tok->str.str[0] != '}')
+		while (!rd.eof() && tok->str.str[0] != '}')
 		{
 			typename T::key_type key;
 			read_json(rd, key);
@@ -1036,8 +1038,10 @@ namespace iguana { namespace json
 			else
 			{
 				//rd.error("no valid object!");
-                while (!rd.eof() && rd.peek().str.str[0] != '}')
+                while (!rd.eof() && rd.peek().str.str[0] != '}' && rd.peek().str.str[0] != '}')
                     rd.next();
+                rd.next();
+                rd.next();
 			}
 		}
 		rd.next();
